@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html><head>
+    <title>jSnow in container and in full window</title>
+    <style>
+        body{background: #679; color: #8ac;}
+        .toggle_inner,.toggle_whole{cursor: pointer; color: #fff; position: relative; z-index: 11;}
+        .inner{position: relative;  z-index: 1; width:400px; min-height:400px; background: rgba(132, 125, 142, 0.87); overflow: hidden}
+    </style>
+    <script src="i/jquery-2.1.4.js"></script>
+    <script src="jSnow.js"></script>
+</head>
+<body>
+
+v.1.1.mod3 <i>(2009+2015)</i><br><br><br><br>5<br><span class="toggle_inner">toggle_inner</span>
+&nbsp; <br><br><br>
+
+<div class="inner">2<br>3</div><br>10<br><br><br><br><span class="toggle_whole">toggle_whole</span><br>15<br><br><br><br><br>20<br><br><br><br><br>25<br><br>
+
+<br><br><br>30<br><br><br><br><br>35<br><br><br><br><br>40<br><br><br><br><br>45<br><br><br><br><br>50<br><br><br><br><br>50<br><br><br><br><br>55<br><br><br><br><br>60<br><br><br><br><br>
+
+<script>
+$(function(){ //example of start
+    $('.inner').jSnow({ //.add(window).add(document.body).add(document)
+        flakeCode:['❅', '❆', '•', '<sup>✻</sup>', '✺']
+        ,flakeMinSize: 20
+        ,flakeColor: ['rgba(208,222,255,.7)','rgba(223,255,223,.78)','#fcc']
+        ,toggleSelector:'.toggle_inner'
+    });
+    $('body').jSnow({
+        flakes: 18
+        ,flakeCode:['❄', '❅','i/snow21.gif']
+        ,flakeMinSize: 45
+        ,flakeMaxSize: 60
+        ,fallingSpeedMin:2
+        ,fallingSpeedMax:4
+        ,fadeAway: 1
+        ,followScroll: 1
+        ,flakeColor:'rgba(208,215,222,.8)'
+        ,toggleSelector:'.toggle_whole'
+    });
+});
+</script>
+</body>
+</html>

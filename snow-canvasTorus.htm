@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<title>SnowFall in torus, with velocity deviations, parallax, attenuation of deviations</title>
+<canvas id="canvas" width="480" height="640"></canvas>
+<button>Toggle Motion</button>
+<script type="text/javascript">
+    var canvas = document.getElementById('canvas')
+            ,interv = 30
+            ,Snowflake = function(h){
+                this.width = canvas.width;
+                this.height = canvas.height;
+                this.vxCommon = .004;
+                this.vyCommon = .0046;
+                this.radius = h.radius;
+                this.x = h.x;
+                this.y = h.y;
+                this.vx = h.vx;
+                this.vy = h.vy;
+            },
+            rand = function(n, shift){return (shift!=null ? shift : -n/2) + n * Math.random();}
+            ,randRad
+            ,snowflakes = Array.apply(0, Array(100)).map(function(){return new Snowflake({
+                radius: randRad = rand(7, 3)
+                ,x: rand(canvas.width - 2* randRad, randRad)
+                ,y: rand(canvas.height - 2* randRad, randRad)
+                ,vx: rand(.02)
+                ,vy: rand(.02)
+            });})
+            ,cont = canvas.getContext('2d'), noStopMotion =1, startMotion;
+
+    (startMotion = function(dt2){ //render all
+        var now = +new Date();
+        cont.fillStyle = '#aab1cd';
+        cont.fillRect(0, 0, canvas.width, canvas.height);
+        cont.fillStyle = '#cdd1df';
+
+        snowflakes.forEach(function(S, i, arr){ //render flake
+            S.date = S.date || now;
+            var dt = dt2 || now - S.date;
+            S.y += dt * (S.vy + S.vyCommon + S.radius *.005);
+            S.y -= S.height * (S.y / S.height |0);
+            S.x += dt * (S.vx + S.vxCommon + S.radius *.0025);
+            S.x -= S.width * (S.x / S.width |0);
+            S.vx = (S.vx + rand(.002)) *.999;
+            S.vy = (S.vy + rand(.002)) *.999;
+
+            cont.beginPath();
+            cont.arc(S.x, S.y, S.radius, 0, 2 * Math.PI, !1);
+            cont.fill();
+            //console.log(S.vx)
+
+            S.date = now;
+        });
+        noStopMotion && setTimeout(arguments.callee, interv);
+    })();
+    document.querySelector('button').addEventListener('click',function(){if(noStopMotion = noStopMotion ?0:1) startMotion(interv)},!1);
+</script>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<title>SnowFall. Version with snow melting</title>
+<style>canvas#canvas{background-image: url("i/sledgeMercedes.jpg");}</style>
+    <canvas id="canvas" width="1396" height="561"></canvas><br>
+<button>Toggle Motion</button>
+<script type="text/javascript">
+    'use strict';
+    var canvas = document.getElementById('canvas')
+    ,interv = 30
+    ,Snowflake = function(h){
+        this.width = canvas.width;
+        this.height = canvas.height;
+        this.vxCommon = .004;
+        this.vyCommon = .0226;
+        this.r = h.r;
+        this.parallax = h.parallax;
+        this.x = h.x;
+        this.y = h.y;
+        this.vx = h.vx;
+        this.vy = h.vy;
+        this.vMelt = .993;
+    };
+    Snowflake.prototype = {
+        rMin: 1.8
+        ,rMax: 5
+        ,plain: .88 * canvas.height //level of plain when flakes are stops
+    };
+    var rand = function(n, shift){return (shift!=null ? shift : -n/2) + n * Math.random();}
+    ,randRad
+    ,snowflakes = Array.apply(0, Array(120)).map(function(){return new Snowflake({
+        r: randRad = rand(Snowflake.prototype.rMax, Snowflake.prototype.rMin)
+        ,parallax: randRad *.005
+        ,x: rand(canvas.width - 2* randRad, randRad)
+        ,y: rand(canvas.height  - 2* randRad, randRad - (canvas.height - Snowflake.prototype.plain))
+        ,vx: rand(.02)
+        ,vy: rand(.02)
+    });})
+    ,cont = canvas.getContext('2d'), noStopMotion =1, count=0;
+    cont.fillStyle = 'rgba(170, 177, 205, 0.29)';
+    cont.fillRect(0, 0, canvas.width, canvas.height);
+    cont.fillStyle = 'rgba(185, 196, 207, 0.78)';
+
+    var startMotion = function(dt2, base_image){ //render all
+        var now = +new Date();
+        cont.clearRect(0, 0, canvas.width, canvas.height);
+
+        snowflakes.forEach(function(S, i, arr){ //render flake
+            S.date = S.date || now;
+            var dt = dt2 || now - S.date;
+            if(!(S.y > S.plain - 2 * S.r -2 + (S.r - S.rMin) * (S.height - S.plain) / (S.rMax - S.rMin) )){
+                S.x += dt * (S.vx + S.vxCommon + S.parallax);
+                S.x -= S.width * (S.x / S.width | 0);
+                S.y += dt * (S.vy + S.vyCommon + S.parallax);
+                S.y -= S.height * (S.y / S.height | 0);
+                S.vx = (S.vx + rand(.002)) * .999;
+                S.vy = (S.vy + rand(.002)) * .999;
+                S.r -= .003
+            }else{
+                S.r = S.r * S.vMelt - .003;
+            }
+            if(S.r >0){
+                cont.beginPath();
+                cont.arc(S.x, S.y, S.r, 0, 2 * Math.PI, !1);
+                cont.fill();
+            }else{
+                S.r = rand(S.rMax, S.rMin);
+                S.y =0;
+            }
+            //console.log(S.vx)
+            S.date = now;
+            count++;
+        });
+        noStopMotion && setTimeout(startMotion, interv);
+    };
+    setTimeout(function(){console.log('count', count /10);}, 10000);
+    document.querySelector('button').addEventListener('click',function(){if(noStopMotion = noStopMotion ?0:1) startMotion(3* interv)},!1);
+    startMotion(null);
+</script>

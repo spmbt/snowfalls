@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html><head>
+	<title>jSnow in multiple containers and in whole window</title>
+	<style>
+		body{background: #40382B; color: #8ac;}
+		.cont2{width:406px;}
+		.toggle_upper,.toggle_lower,.toggle_vert{cursor: pointer; color: #fff; position: relative; z-index: 11;}
+		.toggle_vert{float: right; margin-right: 12px;}
+		.inner,.inner_vert{width:400px; background: #568; overflow: hidden}
+		.inner.upper,.inner_vert{display: inline-block; width:230px; min-height:200px;}
+		.inner_vert{display: inline-block; width:130px; margin-left: 35px; text-align: right;}
+	</style>
+	<script src="i/jquery-2.1.4.js"></script>
+	<script src="jSnow.js"></script>
+</head>
+<body>
+
+<div class="cont2">
+	v.1.1.mod3 <i>(2009+2015)</i><br><br><br><br>5<br><span class="toggle_upper">toggle_upper</span>
+	<span class="toggle_vert">toggle_vert+mosk</span><br><br><br>
+
+	<div class="inner upper">2<br>3</div>
+	<div class="inner_vert">2<br>3</div>
+
+	<br>10<br><br>
+
+	<div class="inner">2<br>3<br>4<br>5<br>6</div>
+
+	<br><br><span class="toggle_lower">toggle_lower</span><br>15<br><br><br>
+</div>
+
+<br><br>20<br><br><br><br><br>25<br><br><br><br><br>30<br><br><br><br><br>35<br><br><br><br><br>40<br><br><br><br><br>45<br><br><br><br><br>50<br><br><br><br><br>50<br><br><br><br><br>55<br><br><br><br><br>60<br><br><br><br><br>
+
+<script>
+$(function(){ //example of start
+	$('.inner.upper').jSnow({ //.add(window).add(document.body).add(document)
+		flakeColor: ['rgba(208,222,255,.7)','rgba(223,255,223,.78)']
+		,toggleSelector:'.toggle_upper'
+	});
+	$('.inner:not(.upper)').jSnow({
+		flakes: 22
+		,flakeColor: ['rgba(223,255,223,.78)','#fcc']
+		,toggleSelector:'.toggle_lower'
+	});
+	$('.inner_vert').jSnow({
+		flakes: 20
+		,flakeColor: ['rgba(208,222,255,.7)','#fcc']
+		,toggleSelector:'.toggle_vert'
+	});
+	$().jSnow({
+		flakes: 8
+		,flakeCode:'mosquito_fly_lg_clr.gif'
+		,flakeMinSize:50
+		,flakeMaxSize:80
+		,flakeColor:'rgba(255,255,255,.4)'
+		,toggleSelector:'.toggle_vert'
+	});
+});
+</script>
+</body>
+</html>

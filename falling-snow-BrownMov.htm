@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html><head>
+	<title>Falling-snow: mod with Brown moving</title>
+<META http-equiv=Content-Type content="text/html; charset=utf-8">
+<META name="keywords" content="javascript html документация программа пример справочник php XMLHttpRequest xml dhtml JScript website вебдизайн ajax">
+<META name="description" content="документация по Javascript">
+<META name="robots" content="index,follow">
+<META content="Igor Svetlov" name=author>
+<META content="Copyright (c) Igor Svetlov, 2005" name=copyright>
+<META content=Global name=distribution>
+<META content=General name=rating>
+</head>
+<body>
+<style>.aTb{border-bottom:1px solid}.aTb a{color:#903;text-decoration:none;font-size:12px}body{margin:0 0 88px 6px;padding:0;font-family:Verdana,Arial,Helvetica,sans-serif}</style><table width=771 class=aTb><tr align=center><td width=2%><script>d=document;bh='<base href="';if((l=location.href).search('file:/')==0)d.write(bh+'.">')</script></td><td width=10% title="Сайт по Javascript"><a href=/>javascript.aho.ru</td><td title=Демонстрации_JS><a href=/example/xmps.shtml>Примеры кодов</td><td title=Оригинальные_материалы><a href=/articles.shtml>Статьи</td><td title=JS:объекты,методы,свойства(архив)><a href=/files/>Документация</td><td title="найти ответ /&#10; задать вопрос по JS"><a href=/wrforum/>Форум</td><td title=Ресурсы_Javascript><a href=/article4.shtml>Ссылки</td></tr></table><script>d.write(bh+l+'">')</script>
+<style>b{color:darkblue}input{height:22px;font-family:Arial}</style>
+<script>	// CREDITS:	checked in IE6,FF1.06,Opera7.54,Opera9.01
+// Snowmaker Copyright (c) 2003 Peter Gehrig. All rights reserved.
+// Modified (c) 2005, Igor Svetlov, Nickname: 12345c
+
+var snowmax = 25; // Set the number of snowflakes (more than 30 - 40 not recommended)
+var snowcolor = ["#c4bbcc","#ccddFF","#ccd6DD"];
+// Set the colors for the snow. Add as many colors as you like
+var snowtype = ["Arial Black","Arial Narrow","Times","Comic Sans MS"];
+// Set the fonts, that create the snowflakes. Add as many fonts as you like
+var snowletter = ["✺","❅","<img src=i/snow.gif>","<img src=i/snow21.gif>"];
+// Set the letter that creates your snowflake (recommended:*)
+var sinkspeed = 0.6; // Set the speed of sinking (recommended values range from 0.3 to 2)
+var snowmaxsize = 45; // Set the maximal-size of your snowflaxes
+var snowminsize = 22; // Set the minimal-size of your snowflaxes
+var snowingleft = 0.7; //левая граница присутствия снега
+var snowingwidth = 0.3; //ширина присутствия снега в окне
+var opac = 0.75; //непрозрачность снега (0.0-1.0), при 1.0 в 2 раза быстрее работает.
+var stepTime = 50; //шаг покадровой анимации (мсек). При менее 100 сильно нагружает процессор
+var stepIncrease = 1.023; //рост размеров с каждым шагом. Рез. зав.от sinkspeed,snowmaxsize,stepTime
+var snow = [];
+var marginbottom;
+var marginright;
+var x_mv = [];	var crds = [];	var lftrght = [];
+var browserinfos = navigator.userAgent;
+d = document;
+var isOpera = self.opera;
+var ie5 = d.all&&d.getElementById&&!isOpera;
+var ns6 = d.getElementById&&!d.all;
+var opera9 = isOpera && parseFloat(navigator.appVersion) >=9;
+var browserok = ie5||ns6||isOpera;
+var ww = 0;
+var timer = 0;
+d.write('<div id=snowZone style=position:absolute></div>');
+var snowmaxOld = 0;
+function createSnow(){
+	for(i =0; i < Math.max(snowmax, snowmaxOld); i++){ if(i < snowmax){
+		var o = d.createElement('SPAN');
+		if(d.getElementById('s'+ i)){ snowZone.replaceChild(o, d.getElementById('s'+ i));}
+		else{snowZone.appendChild(o);}
+		o.setAttribute('id','s'+ i);
+		o.style.position ='absolute';
+		o.style.top = -snowmaxsize +'px';
+		if(ns6) o.style.MozOpacity = opac;
+		if(opera9) o.style.opacity = opac;
+		if(ie5){ o.style.filter ='alpha'; o.filters[0].opacity = opac *100;}
+		snowZone.childNodes[i].innerHTML = snowletter[Math.floor(snowletter.length * Math.random())];
+	}else{snowZone.removeChild(d.getElementById('s'+ i));}
+	}snowmaxOld = snowmax;}
+function randommaker(range){return Math.floor(range * Math.random());}
+
+function botRight(){	if(ie5 || isOpera){ marginbottom = d.body.clientHeight; marginright = d.body.clientWidth;
+}else if(ns6){marginbottom = innerHeight;	marginright = innerWidth;}}
+function checkPgDn(){scrltop = ns6 ? pageYOffset : document.body.scrollTop;}
+function snowRestart(s){ if(s) eval(s);
+	createSnow();
+	snowsizerange = snowmaxsize - snowminsize;
+	clearInterval(ww);clearTimeout(timer);
+	checkPgDn();if(ns6) ww = setInterval(checkPgDn, 999);
+	botRight();
+	for(i = 0; i < snowmax; i++){ crds[i] =0;
+		lftrght[i] = Math.random() *20;
+		x_mv[i] = 0.03 + Math.random() /10;
+		snow[i] = d.getElementById('s'+ i);
+		snow[i].style.fontFamily = snowtype[randommaker(snowtype.length)];
+		snow[i].size = randommaker(snowsizerange) + snowminsize;
+		if(snow[i].hasChildNodes() && (o = snow[i].childNodes[0]).tagName =='IMG') o.width = o.height = snow[i].size/1.6;
+		else snow[i].style.fontSize = snow[i].size /6 +'px';
+		snow[i].style.color = snowcolor[randommaker(snowcolor.length)];
+		snow[i].sink = sinkspeed * snow[i].size /5;
+		newPosSnow(randommaker(marginbottom - 3* snow[i].size), i);
+	}
+	if(snowmax) movesnow(); else{ clearTimeout(timer); clearInterval(ww);}
+}
+function newPosSnow(y, i){ var o;
+	snow[i].posy = y + (ns6 ? pageYOffset : d.body.scrollTop);
+	snow[i].size = (randommaker(snowsizerange) + snowminsize) /6;
+	if(snow[i].hasChildNodes() && (o = snow[i].childNodes[0]).tagName =='IMG') o.width = o.height = snow[i].size /1.6;
+	else snow[i].style.fontSize = snow[i].size /6 +'px';
+	snow[i].posx = randommaker(marginright * snowingwidth - 2* snow[i].size) + marginright*snowingleft;
+	if(ie5) snow[i].filters[0].opacity = opac *100; if(ns6 || opera9) snow[i].style.opacity = opac;
+	setTimeout((function(i){return function(){typeof snow !='undefined' && (snow[i].style.visibility ='visible');}})(i), 250);
+}
+function movesnow(){
+	for(i =0; i < snowmax; i++){
+		snow[i].style.top = (snow[i].posy += snow[i].sink + lftrght[i] * Math.sin(crds[i]) /3) +'px';
+		crds[i] += x_mv[i];
+		var b = snow[i].posx + lftrght[i] * Math.sin(crds[i]);
+		var a = marginbottom + scrltop - 1.5 * snow[i].size - snow[i].posy;
+		snow[i].size *= stepIncrease;
+		if(a <= 0 || b > marginright - snow[i].size -25)
+		{snow[i].style.visibility ='hidden'; newPosSnow(randommaker((marginbottom - 3 * snow[i].size) /2), i); continue;}
+		snow[i].style.left = b +'px';
+		if(snow[i].hasChildNodes() && (o = snow[i].childNodes[0]).tagName =='IMG') o.width = o.height = snow[i].size /1.6;
+		else snow[i].style.fontSize = snow[i].size +'px';
+		if(a <= 9.5*snow[i].size){ if(ie5) snow[i].filters[0].opacity = opac * a / (9.5 * snow[i].size) *100;
+		else if(ns6||opera9)snow[i].style.opacity = opac*a/(9.5*snow[i].size);}
+	}
+	timer = setTimeout(movesnow, stepTime);
+}
+onresize = function(){botRight();};
+onmousewheel = onscroll = function(){checkPgDn();};
+onload = function(){if(browserok)setTimeout(snowRestart, 99);};
+</script>
+
+<BODY bgcolor=white>   //Текст приведён для демонстрации наполнения страницы.//
+<table border=1 cellspacing=0><tr><td><pre>
+
+   <u><B>Скрипт "Падающий снег".</B> 28.12.2005  <B>IE5+, FF1.06+, Opera7.54+</B></u>
+   (Дополнение от <B>12.01.2006</B> г., тестовая версия)
+   (доп. от 9.11.2006 - поддержка прозрачности в Опере 9+)
+     Не требует обязательного использования рисунка снежинок.
+  Может показывать несколько видов снежинок или символов, похожих на них.
+  Устанавливается прозрачность снежинок или символов, оттенок цвета.
+  Внизу окна снежинки исчезают плавно, делаясь всё более прозрачными.
+  Регулируются скорость падения, минимальный и максимальный размеры.
+  Указывается расположение и ширина колонки в окне, в которой будет снег.
+  <B>Снежинки появляются "издали", по мере падения увеличиваются.</B>
+
+  Снежинки кружатся по собственным случайным законам.
+  Процесс устойчив к прокрутке и изменению размеров окна.
+  Меньшие размеры и число снежинок меньше нагружают процессор.
+</pre></td></tr></table><pre>
+// Snowmaker Copyright (c) 2003 Peter Gehrig. All rights reserved.
+	// Modified (c) 2005, Igor Svetlov, Nickname: 12345c
+	//Location: <a href=http://javascript.aho.ru/example/xmp002/falling-snow.htm>http://javascript.aho.ru/example/xmp002/falling-snow.htm</a>
+// Permission given to use the script provided that this notice remains as is.
+<form onsubmit=snowRestart(d.getElementById('i1').value);return!1>
+	// вы можете опробовать работу скрипта, изменив начальные установки:       <input type=button value="Перезапустить скрипт"
+																					  onclick=snowRestart(d.getElementById('initVariables').value);>
+<textarea id=initVariables cols=90 rows=16>
+snowmax = 15  // Количество снежинок (рекомендуется до 30 - 40, и больше, если мелкие)
+snowcolor = ["#c4bbcc","#ccddFF","#ccd6DD"]
+	// Цвет падающих символов. Установите нужное количество цветов (от 0)
+snowtype = ["Arial Black","Arial Narrow","Times","Comic Sans MS"]
+	// Шрифты падающих символов. Ставьте столько, сколько нужно или []
+snowletter = ["✺","❅",'$',"<img src=i/snow.gif>","<img src=i/snow21.gif>"];
+	// Символы, строки или теги рисунков, которые будут падать
+sinkspeed = 0.6    // Скорость падения (рекомендуется от 0.2 до 2)
+snowmaxsize = 45	// Максимальный размер текста и рисунков. Большие падают быстрее.
+snowminsize = 18	// Минимальный размер текста и рисунков
+snowingleft = 0.7	//левая граница присутствия снега
+snowingwidth = 0.3	//ширина присутствия снега в окне
+opac = 0.35     //непрозрачность снега (0.0-1.0), при =1 работает в 1.5-2 раза быстрее
+stepTime = 120  //шаг покадровой анимации (мсек). При менее 100 нагружает процессор
+stepIncrease = 1.023; //рост размеров с шагом. Рез.зав.от sinkspeed,snowmaxsize,stepTime
+</textarea>
+	<input type=button value="Выключить снег" onclick=snowRestart('snowmax=0')>
+	<input type=button value="Перезапуск" onclick=snowRestart(d.getElementById('i1').value)><br>с командной строкой:
+	<input id=i1 size=92 value=snowmax=25,opac=1,snowmaxsize=65,snowminsize=45,stepTime=70;sinkspeed=0.25;>
+	<input type=button value="Только снег" onclick=snowRestart(d.getElementById('i2').innerHTML)> <B><span
+		id=i2>snowletter=['<img src=i/snow.gif>','<img src=i/snow21.gif>'];opac=0.65</span></B>
+</form>
+Чтобы падали только рисунки (снег или другое), оставьте в массиве <B>snowletter</B> теги рисунков.
+Чтобы падали символы или слова, запишите в этот массив строки.  <B>snowletter=["*","+","xxx"]</B>
+Чтобы увеличить вероятность появления символа, повторите строку с ним 2 и более раз.
+Чем меньше размер изображений, тем меньше нагрузка процессора.
+Чтобы снег падал по всему окну, запустите командную строку  <B>snowingleft=0;snowingwidth=1;</B>
+
+
+<a href=falling-snow-woButtons.htm>ссылка для скачивания скрипта (4 КБа)</a>
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
