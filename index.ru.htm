@@ -1,0 +1,454 @@
+
+<nobr><a target="_blank" class="textDecorationColor" href="http://spmbt.github.io/snowfalls/jSnowMultiWin.htm">.<div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="/243x229" src="https://habrastorage.org/files/dfa/01c/6af/dfa01c6af10147b49e7fcacc7da23c54.png" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: ne-resize;" src="https://habrastorage.org/files/dfa/01c/6af/dfa01c6af10147b49e7fcacc7da23c54.png" align="right"></a><span style="color: rgb(34, 68, 136);">⇗</span></nobr>В сравнении с нативным JS на элементах DOM, реализация анимационных алгоритмов на Canvas обычно производительнее во много раз. Это известный факт (но с особенностями для малого числа частиц, как выяснится позже), и он может найти реализацию так всем мешающего традиционного под НГ, но гонимого рациональными пользователями «падающего снега». Чтобы нагрузки было мало, в последние годы считается хорошим тоном «запускать» снег на сайте едва заметным, с минимальным количеством снежинок (5-15). Тут и эффект есть, и нагрузки на процессор почти никакой.<br>
+<br>
+Поэтому, пока <s>до НГ ещё несколько дней</s> ещё зима, предлагаю устроить хакатончик по реализации лучших алгоритмов на канвасе и их аналогов на DOM, взяв за основу в основном древние нативные алгоритмы, которые как максимум обёртывались в плагин jQuery, чтобы было удобно подключать. Большая часть этих алгоритмов не соразмеряет нагрузку на процессор или сделана неэффективно, поэтому даже при малом числе снежинок грузят процессор на 100%. <a target="_blank" class="textDecorationColor" href="http://www.jqueryrain.com/2012/04/top-jquery-snow-falling-effect-plugin-tutorial-with-example/">Вот пример обзорной статьи</a><span style="color: rgb(34, 68, 136);">⇗</span>, где рассмотрены более 10 реализаций, не все, встречающиеся в природе. В дополнение, рассмотрим несколько избранных, чтобы получить задел на развитие алгоритма и реализацию его с хорошей эффективностью (получится ещё 5-6 вариантов). На этой основе можно построить доработку.<br>
+<a name="habracut"></a><br>
+Как обычно, жизнь статьи на χ·е не длится более 1.5 дней, поэтому нельзя рассчитывать акцию эффективной. Но после Нового Года случаются разные чудеса: поток посетителей падает, и случайные лунатики получают шанс не забыть одну статью целых 5 дней. На них и делается ставка.<br>
+<br>
+Лучше если она будет привязана к длительному процессу, например, к клубу Анонимных Дедов Морозов, заходя в который всегда можно будет получить привязку к обсуждению и развитию вариантов «падения снега» и при этом он не привязан жёстко к празднику. Результат в настоящее время — здесь: <a target="_blank" class="textDecorationColor" href="https://geekadm.ru/#/2015">geekadm.ru/#/2015</a><span style="color: rgb(34, 68, 136);">⇗</span>, и есть, конечно, промежуточные эксперименты типа <a target="_blank" class="textDecorationColor" href="http://46.101.141.171/snow.html?v=4">46.101.141.171/snow.html?v=4</a><span style="color: rgb(34, 68, 136);">⇗</span> — снег для HabraAdm с дополнительными эффектами.<br>
+<br>
+Предварительный «хакатон» был устроен парой участников и (или) посетителей клуба — <a href="http://habrahabr.ru/users/kafeman/">(1)</a>, <a href="http://habrahabr.ru/users/spmbt/">(2)</a>. В результате, получилось до 10 вариантов на движке с Canvas. Их число может быть намного больше, но на всё нужно свободное время, поэтому акция превратилась в открытую. Например, можно «прикрутить» к движку уже написанную в 2003 году модель падения снежинок автором Peter Gehrig. Доработка в 2005-2006 показывает на современных браузерах, что 20-30 снежинок незначительно нагружает процессор (10-20%, зависит от мощности и видеокарты; здесь и далее будем <b>говорить о загрузке одного ядра процессора</b>, т.к. JS — однопоточный), а по свидетельствам старых форумов, подобное было и на старых браузерах типа Opera 9 и IE6, но несколько хуже. На Canvas с тем же алгоритмом можно было бы запускать раз в 5 больше объектов.<br>
+<br>
+<nobr><a target="_blank" class="textDecorationColor" href="https://fiddle.jshell.net/spmbt/963b3cyg/9/show/light/"><div style="text-align:center;"><div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="/605x246" src="https://habrastorage.org/files/5c9/34c/312/5c934c312ad343beaeefb56ae257c6f5.jpg" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: ne-resize;" src="https://habrastorage.org/files/5c9/34c/312/5c934c312ad343beaeefb56ae257c6f5.jpg"></div><br>
+    демо</a><span style="color: rgb(34, 68, 136);">⇗</span></nobr><nobr><div style="text-align:center;"><div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="/396x19" src="https://habrastorage.org/files/e03/ae7/7a4/e03ae77a46a1490cb78752a4613dbfdd.png" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: ne-resize;" src="https://habrastorage.org/files/e03/ae7/7a4/e03ae77a46a1490cb78752a4613dbfdd.png"></div></nobr><br>
+<br>
+<h2>Заглянем в историю и посмотрим на её ход</h2><br>
+Давайте начнём с начала, с 2002-2005 годов примерно. Джаваскрипт показл способность анимировать падение снежинок. Правда, оказалось, и это было естественным, анимация на скрипте или непроизводительная, или сильно грузит процессор. Поэтому и в те старые времена нужно было или очень экономить ресурсы, или грузить процессор по максимуму, на 100% в потоке браузера, (на 1 ядре) что тормозило другие вкладки (в тех браузерах типа Оперы 9, где они были) и окна, и это вызывало плохо скрываемое негодование посетителей таких страниц.<br>
+<br>
+Через лет 8 нашлось решение этой проблемы на уровне браузера. Основные браузеры, начиная с Хрома, стали приостанавливать выполнение скриптов на невидимых вкладках. Это помогло не мешать просмотру других окон и программ (но не приостанавливается при переходе на другое окно, а только уменьшается нагрузка, если окно не отрисовывается на экране или видно частично). Правда, в связи с мобильной эрой, открывание страниц с грузящей анимацией, всё равно, не воспринимается положительно.<br>
+<br>
+Но за эти годы появился и более совершенный механизм анимации — Canvas. Сразу надо заметить, что другой новаторский механизм — анимации в CSS — не помогают экономить нагрузку, и тратят энергию процессора ровно столько же, как и анимация на Javascript + DOM. То есть, если искать лучшее решение, то приходится делать это в Canvas.<br>
+<br>
+Canvas, как это будет видно в примерах, позволяет сотню снежинок запустить с нагрузкой 30-40% для среднего настольного компьютера или ноутбука. Это примерно в 5 раз эффективнее, чем умеют лучшие оптимизированные алгоритмы на JS+DOM.<br>
+<br>
+Как дань истории, рассмотрим и «классические» алгоритмы, которые ждут своего часа для оптимизации и перевода на Canvas.<br>
+<br>
+Очень много алгоритмов легко найти поиском в Github по словам типа «snowfall js», «snow flakes js». Они дополнят хорошую подборку из <a target="_blank" class="textDecorationColor" href="http://www.jqueryrain.com/2012/04/top-jquery-snow-falling-effect-plugin-tutorial-with-example/">12 скриптов с демо-ссылками, упомянутую выше</a><span style="color: rgb(34, 68, 136);">⇗</span> (или <a target="_blank" class="textDecorationColor" href="http://blog.platinastudio.com/jquery-snow-falling-effect-plugins/">расширенная копия</a><span style="color: rgb(34, 68, 136);">⇗</span>).<br>
+<br>
+<h2>Обзор алгоритмов с примерами</h2><br>
+<i>(При просмотре страниц с примерами будьте готовы к иногда 100%-ной загрузке ядра процессора. При показе ссылки в статье об уровне загрузки предупреждается.)</i><br>
+<br>
+Многие алгоритмы, кроме того, что неэффективны, ещё и не похожи по поведению на реальное поведение снежинок. Наверное, многим помнится бросающееся в глаза несоответствие реальности движение снежинок по синусоиде. Однажды <a target="_blank" class="textDecorationColor" href="http://www.dynamicdrive.com/dynamicindex3/snow.htm">увиденное</a><span style="color: rgb(34, 68, 136);">⇗</span> (или <a target="_blank" class="textDecorationColor" href="http://loktar00.github.io/JQuery-Snowfall/">новее</a><span style="color: rgb(34, 68, 136);">⇗</span>), оно запоминается надолго в качестве отрицательного примера. Поэтому, задача алгоритма — быть не только эффективным, но и отражающим реальность. (По эффективности, вычисление гармонических функций тоже должно проигрывать.)<br>
+<br>
+Из ранее пересмотренных алгоритмов наиболее близкими к реальности можно считать два — со случайными перемещениями (варьировать надо скорости, а не координаты) и упомянутый алгоритм Peter Gehrig (2003), в котором движение управляется 4 переменными, и одна из них — гармонически изменяющаяся, что создаёт периодические эффекты «завихрений». Впрочем, по этому поводу можно спорить и добавлять в копилку новые реализации.<br>
+<br>
+Из найденных реализаций алгоритма P.Gehrig нашлась страничка с примером: <a target="_blank" class="textDecorationColor" href="http://www.softtime.ru/javascript/snow-falling.html">www.softtime.ru/javascript/snow-falling.html</a><span style="color: rgb(34, 68, 136);">⇗</span>. По ней понятно, о чём идёт речь. Небольшое количество снежинок (15-20) и сейчас не сильно грузит процессоры (10-20% для не слабых ноутов), работает в Хроме и Firefox, хотя в списке поддержки читается Opera 9, IE5 и 6 и какой-то ранний Firefox. Разумеется, о Canvas тогда не знали.<br>
+<br>
+Сведём увиденное в таблицу, где покажем:<br>
+*) количество частиц;<br>
+*) тип анимации;<br>
+*) наличие песочницы для экспериментов;<br>
+*) загрузка процессора (MacBook, Firefox 43) (Хром обычно % на 10 эффективнее);<br>
+*) комментарии об особенностях.<br>
+<br>
+(Реальные данные загрузки процессора будут отличаться от указанных для разных компьютеров, для компьютеров с разными видеокартами и для мобильных устройств в широких пределах. Даны для ориентировки для среднемощного ноутбука со встроенной графикой.)<br>
+<br>
+Посмотрим быстрее на скрипты с применением Canvas.<br>
+<table>
+    <tbody><tr>
+        <th>Не чистый JS </th>
+        <th colspan="3">Демо: 400x400, <a target="_blank" class="textDecorationColor" href="https://www.khanacademy.org/computer-programming/snowman-with-falling-snow/1017930778">Snowman with Falling Snow</a><span style="color: rgb(34, 68, 136);">⇗</span></th>
+    </tr>
+    <tr>
+        <td>Частиц на демо: <b>100</b></td>
+        <td rowspan="5" colspan="3"><div style="text-align:center;"><div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="/605x276" src="https://habrastorage.org/files/cc9/512/f98/cc9512f9811d45a8ab7571629b6309f4.png" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: ne-resize;" src="https://habrastorage.org/files/cc9/512/f98/cc9512f9811d45a8ab7571629b6309f4.png"></div></td>
+    </tr>
+    <tr>
+        <td>Тип: Canvas</td>
+    </tr>
+    <tr>
+        <td>Песочница — <b>ДА</b></td>
+    </tr>
+    <tr>
+        <td>Загрузка: <b>70%</b></td>
+    </tr>
+    <tr>
+        <td>Строк кода: <b>106</b> +ProcessingJS (800K)</td>
+    </tr>
+    <tr>
+        <td colspan="4">Рисуется в среде <a target="_blank" class="textDecorationColor" href="http://processingjs.org/reference/">ProcessingJS</a><span style="color: rgb(34, 68, 136);">⇗</span> на 800К несжатого кода, создающей язык типа «Рапира». Снеговик рисуется тем же кодом. Пример — особый. Показывает, что с оболочками наворотить можно чего угодно (для решения простых задач сложными способами), и даже в этом случае Canvas не катастрофически проигрывает решениям на DOM.</td>
+    </tr>
+    <tr>
+        <th><a target="_blank" class="textDecorationColor" href="http://www.jqueryrain.com/?_ol9H3hd">Статья (en)</a><span style="color: rgb(34, 68, 136);">⇗</span>, 2012</th>
+        <th>Код: <a target="_blank" class="textDecorationColor" href="https://github.com/sebleedelisle/live-coding-presentations/tree/master/2011/JSSnow">Github</a><span style="color: rgb(34, 68, 136);">⇗</span></th>
+        <th colspan="2">Демо: <a target="_blank" class="textDecorationColor" href="http://sebleedelisle.com/demos/JSSnowNew/snow3d.html">весь экран</a><span style="color: rgb(34, 68, 136);">⇗</span></th>
+    </tr>
+    <tr>
+        <td>Частиц на демо: <b>500</b></td>
+        <td rowspan="5" colspan="3"><div style="text-align:center;"><div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="/605x311" src="https://habrastorage.org/files/cf5/6c8/df3/cf56c8df38b549bfb9348ff5ab6cad73.png" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: ne-resize;" src="https://habrastorage.org/files/cf5/6c8/df3/cf56c8df38b549bfb9348ff5ab6cad73.png"></div></td>
+    </tr>
+    <tr>
+        <td>Тип: Canvas</td>
+    </tr>
+    <tr>
+        <td>Песочница? <b>Нет</b></td>
+    </tr>
+    <tr>
+        <td>Загрузка: <b>100%</b></td>
+    </tr>
+    <tr>
+        <td>Строк кода: <b>50</b> + 100 в *.html +ThreeCanvasJS (72K)</td>
+    </tr>
+    <tr>
+        <td colspan="4">72 К сжатого неупакованного кода библиотеки ThreeCanvas.js. 3D-сцена с вращением её движением мыши. Здесь ради плавного движения поставлен малый битрейт, поэтому всё красиво, но как фоновое действие — не слишком подходяще.</td>
+    </tr>
+    <tr>
+        <th>Год: 2010</th>
+        <th>Код: <a target="_blank" class="textDecorationColor" href="http://www.goat1000.com/snow2.js">JS</a><span style="color: rgb(34, 68, 136);">⇗</span></th>
+        <th colspan="2">Демо и описание: <a target="_blank" class="textDecorationColor" href="http://www.goat1000.com/snow.php">весь экран</a><span style="color: rgb(34, 68, 136);">⇗</span></th>
+    </tr>
+    <tr>
+        <td>Частиц на демо: <b>60</b>, крутятся в плоскости рисунка</td>
+        <td rowspan="5" colspan="3"><div style="text-align:center;"><div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="/605x326" src="https://habrastorage.org/files/fdf/927/b7b/fdf927b7b16a44b392ee25860d2531b9.png" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: ne-resize;" src="https://habrastorage.org/files/fdf/927/b7b/fdf927b7b16a44b392ee25860d2531b9.png"></div></td>
+    </tr>
+    <tr>
+        <td>Тип: Canvas</td>
+    </tr>
+    <tr>
+        <td>Песочница? <b>Нет</b></td>
+    </tr>
+    <tr>
+        <td>Загрузка: <b>100%</b></td>
+    </tr>
+    <tr>
+        <td>Строк кода: <b>160</b></td>
+    </tr>
+    <tr>
+        <td colspan="4">Очень частая анимация не позволяет и здесь оценить достоинства Canvas. Есть вращение рисованых снежинок вокруг своей оси, медленное падение с блужданиями. Но часть из них «ходит» по синусоидам, кручение в одной плоскости нисколько не придаёт реалистичности, что, наоборот, отторгает от восприятия эффекта, создаёт, скорее, эффект назойливости. Код — наоборот, показывает свою мощность и компактность. В сумме — отличные усилия направлены на достижение немного не тех эффектов, что для потребителя — ничем не лучше поедающих энергию движков на DOM.</td>
+    </tr>
+    <tr>
+        <td colspan="4">&nbsp;<br>
+            &nbsp;&nbsp;Посмотрим на примеры скриптов, работающих с DOM (слоями), без Canvas.<br>
+            <br>
+        </td>
+    </tr>
+    <tr>
+        <th>Год: 2009</th>
+        <th colspan="2">Демо: <a target="_blank" class="textDecorationColor" href="http://demos.9lessons.info/happyxmas.html">jSnow – jQuery Snow Effect</a><span style="color: rgb(34, 68, 136);">⇗</span>, весь экран</th>
+        <th>Код: <a target="_blank" class="textDecorationColor" href="http://shadowmint.blogspot.ru/2009/12/jsnow-mods.html">JS</a><span style="color: rgb(34, 68, 136);">⇗</span> (несжатый прежней версии)</th>
+    </tr>
+    <tr>
+        <td>Частиц на демо: <b>25</b></td>
+        <td rowspan="5" colspan="3"><div style="text-align:center;"><div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="/605x265" src="https://habrastorage.org/files/265/4c5/83d/2654c583dae94209a07327056aeda4c8.png" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: ne-resize;" src="https://habrastorage.org/files/265/4c5/83d/2654c583dae94209a07327056aeda4c8.png"></div></td>
+    </tr>
+    <tr>
+        <td>Тип: DOM</td>
+    </tr>
+    <tr>
+        <td>Песочница? <b>Нет</b></td>
+    </tr>
+    <tr>
+        <td>Загрузка: <b>70%</b></td>
+    </tr>
+    <tr>
+        <td>Строк кода: <b>160</b></td>
+    </tr>
+    <tr>
+        <td colspan="4">Варианты в песочницах Fiddle (везде используются символьные снежинки):<br>
+            <ul>
+                <li>Упакованный (обфусцированный) <a target="_blank" class="textDecorationColor" href="http://jsfiddle.net/spmbt/vhccLbzm/3/embedded/result,js,html,css/"><b>оригинальный код в песочнице</b></a><span style="color: rgb(34, 68, 136);">⇗</span> с адаптацией к jQuery 2.<br>
+                </li>
+                <li>Распакованный, но плохо движущийся (малые синусоиды) <a target="_blank" class="textDecorationColor" href="http://jsfiddle.net/spmbt/vhccLbzm/embedded/result,js,html,css/">мод mod1 кода в песочнице</a><span style="color: rgb(34, 68, 136);">⇗</span> с адаптацией к jQuery 2.<br>
+                </li>
+                <li>Восстановленный с рефакторингом имён, стиля, <a target="_blank" class="textDecorationColor" href="https://jsfiddle.net/spmbt/xcez6ha6/1/">максимально похожий и работающий код (Fiddle)</a><span style="color: rgb(34, 68, 136);">⇗</span> этого скрипта в песочнице. Останавливается/запускается по кнопке останова. В сжатом виде — 1.5К.<br>
+                </li>
+                <li>Расширенный до возможности запуска нескольких объектов в блоках или в целом окне. Запуск по коллекции. В сжатом виде — 1.8 К, меньше оригинального, который 2.2-2.4 для разных модов.</li>
+            </ul></td>
+    </tr>
+    <tr>
+        <td colspan="4">У этого скрипта — характерный почерк движений частиц (сильно в стороны). Если присмотреться — это просто очень большие синусоиды, воспринимающиеся как один большой вихрь посередине окна. Он очень сдержан по трате ресурсов. Исходный код версии 1.2 — утерян или всегда был обфусцирован пакером; распакованные версии 1.1.mod2 (доработанные другими авторами) — есть в песочнице Codepen, но не работают с новыми jQuery, потому что обращаются к отменённым $.browser. И в них видны следы распаковки. Прекрасно смотрится в невысоких заголовках (<a target="_blank" class="textDecorationColor" href="http://www.brazicraciun.com/">пример</a><span style="color: rgb(34, 68, 136);">⇗</span>), когда синусоиды не успевают проглядеться. Из десятков примеров, если стоит приглядеться к паре из них (по исполнению и коду), то этот пример — один из них. Поэтому за версию jSnow возьмёмся основательно, запустив в песочнице.<br>
+        </td>
+    </tr>
+    </tbody></table>Что интересно, упакованная версия автора, 1.1 или 1.2 работает заметно быстрее — при тех же внешних настройках <a target="_blank" class="textDecorationColor" href="http://jsfiddle.net/spmbt/vhccLbzm/3/embedded/result,js,html,css/">нагружает процессор на 40%</a><span style="color: rgb(34, 68, 136);">⇗</span>, а <a target="_blank" class="textDecorationColor" href="http://jsfiddle.net/spmbt/vhccLbzm/3/embedded/result,js,html,css/">1.1.mod2 — на 55%</a><span style="color: rgb(34, 68, 136);">⇗</span>. (Фиддл тоже быстрее работает не в многооконном режиме.) Скорее всего, так сказываются лишние проверки в цикле отрисовки снежинок (в модах добавлены «фичи»). Сам код не предельно оптимизирован — пишет инлайновые стили, которые можно задать правилами.<br>
+<br>
+Далее стало интереснее — в коде при тестируемых настройках обнаружился ряд багов (и это не значит, что нашлись все). Кое-какие правки в коде делать придётся (убрать несовместимость с jQ 2+, вычисление начального положения снежинки, не давать заходить им за левый край окна — в маках это приводит к «вспыхиванию» полосы прокрутки, и полезно то же самое делать для нижней границы), поэтому пользоваться лучше модифицированными современными версиями.<br>
+<br>
+Версии-моды (2009-2010) добавили пару насущных «фич» — настройки плавного исчезания снежинок внизу (fadeAway: 1) и возможность прокрутки с неперемещением поля снежинок (followScroll: 1). Названия оставлены оригинальными, какими назвали их разработчики.<br>
+<br>
+Цель отладки старого кода в том, чтобы потом алгоритм перенести на Canvas и сравнить скорости. <s>(Калек побеждать — чести маловато.)</s> В настройках я повторяю те же ошибки, над которыми критиковал других. Для разработчика неважно, что разноцветный снег, падающий в 2D, не бывает — главное, есть техническая возможность раскрасить. А ещё, летят не снежинки, а комки в реальности. Но 3/4 населения Земли этого не знает, так что нас ждёт успех… В наборе снежинок использовано большинство символов Unicode, похожих на снежинки — набралось аж 8. Можно найти ещё столько же.<br>
+<br>
+Итак, получился читаемый код, на 20 строчек короче (90 строк) и в упакованном виде на 30% меньше (1.5К), чем лучшие образцы модов, не потеряв при этом функций и добавив стоп-старт-кнопку. Этот промежуточный вариант компактен, но работает, как и раньше, с окном и абсолютно может задавать высоту (height: число) в параметрах. Это не очень удобно, тем более, что плагин не использует контекстную коллекцию вообще, поэтому нормально себя чувствует с вызовом странного вида $().jSnow(...), т.е. без контекста. Получилось довольно просто, <a target="_blank" class="textDecorationColor" href="http://spmbt.github.io/snowfalls/jSnowSimple.htm">ограничимся здесь ссылкой на демо</a><span style="color: rgb(34, 68, 136);">⇗</span>.<br>
+<br>
+И усложним задачу — начать работать с контекстными коллекциями jQuery. Сохраним это поведение, когда нет контекста — выбираем работу с окном, как и при контексте window и $('body')) и добавим работу с блоком-контейнером (например, запускать по $('.contSnow').jSnow(...) ). Контейнер придётся подготовить, для него нужен position:relative, чтобы вставляемый блок с absolute хорошо себя чувствовал. Блок, который на всё окно, тоже начнёт себя вести по-другому, будет покрывать окно, поэтому весь контент страницы потребуется поднять, если будет такой блок. (Можно и иначе, по-старому, но зачем усложнять? Скорее, будут использовать или первый скрипт, или второй.) Получится примерно так: <br>
+<br>
+<nobr><a target="_blank" class="textDecorationColor" href="http://spmbt.github.io/snowfalls/jSnow.htm"><div style="text-align:center;"><div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="/605x483" src="https://habrastorage.org/files/b73/e65/d37/b73e65d37c994f55a502a446a68e805f.png" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: ne-resize;" src="https://habrastorage.org/files/b73/e65/d37/b73e65d37c994f55a502a446a68e805f.png"></div> демо</a><span style="color: rgb(34, 68, 136);">⇗</span>, <a target="_blank" class="textDecorationColor" href="https://github.com/spmbt/snowfalls/blob/gh-pages/jSnow.js">(код в репо)</a><span style="color: rgb(34, 68, 136);">⇗</span>. Это DOM, нагрузка 30% на поток (15% — общая) с битрейтом 12.<br>
+    Несколько влияет то, что картинки — крупные и прозрачные.</nobr><br>
+<br>
+В самом деле, зачем работать только с одним контейнером, если jQuery может предоставить коллекцию? Получается что-то <a target="_blank" class="textDecorationColor" href="http://spmbt.github.io/snowfalls/jSnowMultiWin.htm">типа такого</a><span style="color: rgb(34, 68, 136);">⇗</span>, нагрузка 30-50% для суммы в 70-120 частиц. Остановку-запуск можно тоже разделить по кнопкам или сделать общей.<br>
+<br>
+При попытках применить написанное сразу бросается в глаза непрактичность запуска скрипта на коллекции. Запустить — да, можно, даже десятки инстансов скриптов, раздавая каждому по чуть-чуть снежинок. Но всем блокам коллекции сообщаются одинаковые параметры, и это — непрактично, т.к. чаще хочется сделать другую задачу — запустить немного окон (виртуальных, на дивах), но с разными параметрами, а для этого приходится их сообщать одному элементу. Получается, чаще всего, что сколько элементов, столько нужно запусков .jSnow, что получается длинно, хотя и наглядно.<br>
+<br>
+Тут возникает аналогия с написанием правил CSS. Правила — это те же декларации параметров, какие мы делаем при запусках плагинов, даже селекторы у плагинов стоят на своём месте. Но нет сейчас механизам постепенно накапливать описания правил (подобно тому, как в одном — font-size, в другом — position). Второй запуск плагина на том же элементе добавляет ещё один инстанс плагина (долгоиграющую функцию с замыканием и возможностью выключения), а не добавляет свойств к уже запущенному. При этом удобнее было бы перечислять селекторы (просто строки с классами), а не JSON-ы настроек. Но не припомнится ни одного плагина, где такой способ конструирования настроек был бы нужен и работал. На самом продвинутом варианте демо напишем запуск в 4 областях так, как плагин теперь умеет:<br>
+<br>
+<nobr><a target="_blank" class="textDecorationColor" href="http://spmbt.github.io/snowfalls/jSnowMultiWin.htm"><div style="text-align:center;"><div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="/243x229" src="https://habrastorage.org/files/dfa/01c/6af/dfa01c6af10147b49e7fcacc7da23c54.png" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: ne-resize;" src="https://habrastorage.org/files/dfa/01c/6af/dfa01c6af10147b49e7fcacc7da23c54.png"></div><br>
+    демо</a><span style="color: rgb(34, 68, 136);">⇗</span>, <a target="_blank" class="textDecorationColor" href="https://github.com/spmbt/snowfalls/blob/gh-pages/jSnowMultiWin.htm">(кот в репо)</a><span style="color: rgb(34, 68, 136);">⇗</span></nobr><br>
+<br>
+Доработки плагина добавили порядка 300 байт сжатого кода, но теперь он с бОльшим основанием может называться плагином. Правда, без единого метода.<br>
+<br>
+<h2>Другие скрипты для работы с DOM</h2><br>
+Такое внимание уделено одному скрипту, не самому продвинутому, потому что, если заглянуть вперёд, он оказывается небольшим конкурентом скриптам на Canvas, не тем, что выше, а хорошо, экономично написанным. Неэффективно написанные не станут конкурентами, поэтому в коде нельзя допустить ничего лишнего, чтобы было что с чем сравнивать.<br>
+<br>
+Например, есть очень популярный скрипт на DOM под названием <a target="_blank" class="textDecorationColor" href="https://github.com/scottschiller/snowstorm/">Snowstorm</a><span style="color: rgb(34, 68, 136);">⇗</span>, со сжатым кодом 20К, очень большим количеством настроек, отключением в мобильных устройствах — есть, чему поучиться и для малых скриптов. Но изучать, что там лишнего и приводит ли это к потерям — слишком сложная задача. Проще написать малое и расширять настройки. Значимость каждой выяснится на тестах и практике.<br>
+<br>
+Быстро пройдёмся по ещё одному небольшому скрипту, который не найден среди хорошо оформленных демо и песочниц, но имеет интересное поведение (упоминался выше, автора P.Gehrig). Нет больших сложностей поместить его в песочницу — доработок багов не требует, jQuery не использует, но потребовалось приучить к современному доктайпу. Также, раньше было плохо с особыми символами Unicode у системных шрифтов, сейчас — лучше, поэтому падающие буквы заменены на падающие текстоваые (подцвеченные) снежинки.<br>
+<table>
+    <tbody><tr>
+        <td colspan="2">Год: 2005, <a target="_blank" class="textDecorationColor" href="http://spmbt.github.io/snowfalls/falling-snow.htm">falling-snow с настройками</a><span style="color: rgb(34, 68, 136);">⇗</span>, <a target="_blank" class="textDecorationColor" href="https://github.com/spmbt/snowfalls/blob/gh-pages/falling-snow.htm">код</a><span style="color: rgb(34, 68, 136);">⇗</span>, <a target="_blank" class="textDecorationColor" href="https://jsfiddle.net/spmbt/haL5g3o7/1/">jsFiddle</a><span style="color: rgb(34, 68, 136);">⇗</span></td>
+    </tr>
+    <tr>
+        <td>Частиц на демо: <b>25</b></td>
+        <td rowspan="5"><div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="/605x319" src="https://habrastorage.org/files/de0/550/5b4/de05505b41e44142ae57c970a26c6d8c.png" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: ne-resize;" src="https://habrastorage.org/files/de0/550/5b4/de05505b41e44142ae57c970a26c6d8c.png"></td>
+    </tr>
+    <tr>
+        <td>Тип: <b>DOM</b></td>
+    </tr>
+    <tr>
+        <td>Песочница? <b>ДА</b></td>
+    </tr>
+    <tr>
+        <td>Загрузка: <b>10%</b> (из-за 8 FPS)</td>
+    </tr>
+    <tr>
+        <td>Строк кода: <b>90</b></td>
+    </tr>
+    <tr>
+        <td colspan="2">Столь малая загрузка системы у оригинальных настроек скрипта вызвана низким выставленным FPS. Это, конечно, заметно по движениям как частое слайдшоу. Это было нужно для старых браузеров и предупреждается в старых комментариях к скрипту. При 30 FPS — загрузка 35%, примерно столько же, как будет у предыдущего скрипта при таких же настройках.<br>
+            <br>
+            У этого скрипта есть модификация с добавлением броуновского движения и с падением как бы «издалека» экрана, увеличением и «таянием» (увеличением прозрачности) вблизи или внизу.<br>
+        </td>
+    </tr>
+    <tr>
+        <td colspan="2">Год: 2006, <a target="_blank" class="textDecorationColor" href="http://falling-snow-BrownMov.htm">falling-snow с падением «издали» с настройками</a><span style="color: rgb(34, 68, 136);">⇗</span>, <a target="_blank" class="textDecorationColor" href="https://jsfiddle.net/spmbt/zqm64eq8/">jsFiddle</a><span style="color: rgb(34, 68, 136);">⇗</span></td>
+    </tr>
+    <tr>
+        <td>Частиц на демо: <b>25</b></td>
+        <td rowspan="5"><a target="_blank" class="textDecorationColor" href="https://habrastorage.org/files/5d6/253/db8/5d6253db8c1048efa45f2d8d54d341dd.png"><div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="1170x739" src="https://habrastorage.org/files/5d6/253/db8/5d6253db8c1048efa45f2d8d54d341dd.png" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: move;" data-viewurl="https://habrastorage.org/files/5d6/253/db8/5d6253db8c1048efa45f2d8d54d341dd.png" class="de-img-thumb" src="https://habrastorage.org/files/5d6/253/db8/5d6253db8c1048efa45f2d8d54d341dd.png" height="382" width="605"><br>
+            <i>(смотреть в полном экране)</i></a><span style="color: rgb(34, 68, 136);">⇗</span></td>
+    </tr>
+    <tr>
+        <td>Тип: <b>DOM</b></td>
+    </tr>
+    <tr>
+        <td>Песочница? <b>ДА</b></td>
+    </tr>
+    <tr>
+        <td>Загрузка в jsFiddle: <b>60%</b> (16 FPS)</td>
+    </tr>
+    <tr>
+        <td>Строк кода: <b>100</b></td>
+    </tr>
+    <tr>
+        <td colspan="2">Здесь настройки размеров достаточно «капризны» — небольшим изменением скорости роста можно получить огромные снежинки или не растущие, поэтому другие сценарии поведения нужно подбирать, а эффектность будет зависеть в конечном итоге от размеров окна и поведения (не автонастраивается). Заметное повышение нагрузки связано с отрисовной больших прозрачных символов (изображений). (Исходный код написан плотно, реальное количество кода после разреживания было бы в 2 раза больше.)<br>
+        </td>
+    </tr>
+    </tbody></table><br>
+Напишем все варианты кода со снегом на Гитхабе. Учтём недоработки предшественников, которые не писали демо-страниц, и потому на их код посмотрели гораздо меньше людей. Гитхаб позволяет крайне просто запускать демо, если работать в ветке gh-pages. Теперь все модификации версий легко фиксируются в истории изменений и смотрятся различия. Гитхаб: <a target="_blank" class="textDecorationColor" href="https://github.com/spmbt/snowfalls">github.com/spmbt/snowfalls</a><span style="color: rgb(34, 68, 136);">⇗</span>.<br>
+<br>
+<h2>Как там с CSS-анимациями?</h2><br>
+Смотрим примеры, написанные другими, дальше, в поисках эффективных алгоритмов и эффектных результатов.<br>
+<br>
+1. Пример (<b>единственный с анимациями CSS</b>) сильно загружающей анимации на CSS3 с вращением DOM-снежинок — <a target="_blank" class="textDecorationColor" href="http://www.jqueryscript.net/animation/jQuery-Plugin-For-Snowfall-Effect-with-Rotating-Snowflakes.html">www.jqueryscript.net/animation/jQuery-Plugin-For-Snowfall-Effect-with-Rotating-Snowflakes.html</a><span style="color: rgb(34, 68, 136);">⇗</span>. (На этом сайте есть всё — описание, код и демо для каждого скрипта, но без песочниц.) <br>
+<br>
+2. Анимация на <a target="_blank" class="textDecorationColor" href="http://codepen.io/NickyCDK/pen/AIonk">3 картиночных слоях</a><span style="color: rgb(34, 68, 136);">⇗</span> в CSS (Codepen).<br>
+<br>
+Пробуем смотреть ещё анимации на канвасе, чтобы найти не сильно нагружающий систему скрипт.<br>
+<br>
+Пример анимации на Canvas, активирующейся по движению мыши, где можно увидеть, что приемлемое количество снежинок — не сплошная генерация с порядка 200-300, а порядка 50-100 на экране — <a target="_blank" class="textDecorationColor" href="http://www.jqueryscript.net/animation/Yet-Another-Falling-Snow-Animation-with-jQuery-Canvas-GlauserChristmas.html">www.jqueryscript.net/animation/Yet-Another-Falling-Snow-Animation-with-jQuery-Canvas-GlauserChristmas.html</a><span style="color: rgb(34, 68, 136);">⇗</span>.<br>
+<br>
+Ещё одна анимация на Canvas без библиотек, с демо и комментариями на китайском: <a target="_blank" class="textDecorationColor" href="http://www.jqueryscript.net/animation/Nice-Snow-Falling-Effect-with-jQuery-Canvas-Nice-Snowing.html">www.jqueryscript.net/animation/Nice-Snow-Falling-Effect-with-jQuery-Canvas-Nice-Snowing.html</a><span style="color: rgb(34, 68, 136);">⇗</span>.<br>
+<br>
+Все эти анимации, включая Canvas, почему-то настроены так, что грузят процессор на 100% (точнее, одно ядро, которое может загрузить однопоточный JS). Это будто бы считается нормальным для демонстраций скриптов. <i>(Возможно, на дискретных видеокартах это так и есть.)</i><br>
+<br>
+<h2>Как-то это всё странно</h2><br>
+Среди скриптов со снегом встречается очень мало экономящих нагрузку процессора, хотя они есть как для DOM, так и для Canvas. Покажем, что того же эффекта полной загрузки можно добиться не для 100, а для пары тысяч снежинок, а нормальной лучше считать загрузку ядра на 10-20% для 200-400 штук.<br>
+<br>
+<h2>Выбираем эффективный Canvas</h2><br>
+Впрочем, тут нашёлся один экономичный скрипт на чистом Canvas. Свои примеры будем делать примерно в его стиле. <br>
+<table>
+    <tbody><tr>
+        <th>Год: 2015</th>
+        <th colspan="2">Демо: <a target="_blank" class="textDecorationColor" href="http://thecodeplayer.com/walkthrough/html5-canvas-snow-effect">Snow Effect using HTML5 Canvas and Javascript</a><span style="color: rgb(34, 68, 136);">⇗</span>, весь экран</th>
+        <th><a target="_blank" class="textDecorationColor" href="https://jsfiddle.net/spmbt/mbdardty/">Копия на jsFiddle</a><span style="color: rgb(34, 68, 136);">⇗</span></th>
+    </tr>
+    <tr>
+        <td>Частиц на демо: <b>25</b></td>
+        <td rowspan="5" colspan="3"><div style="text-align:center;"><div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="/605x353" src="https://habrastorage.org/files/519/1fb/5ae/5191fb5ae533450bbb0fcf6c42c8a1b4.png" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: ne-resize;" src="https://habrastorage.org/files/519/1fb/5ae/5191fb5ae533450bbb0fcf6c42c8a1b4.png"></div></td>
+    </tr>
+    <tr>
+        <td>Тип: <b>Canvas</b></td>
+    </tr>
+    <tr>
+        <td>Песочница — <b>ДА</b></td>
+    </tr>
+    <tr>
+        <td>Загрузка: <b>45%</b></td>
+    </tr>
+    <tr>
+        <td>Строк кода: <b>90</b></td>
+    </tr>
+    <tr>
+        <td colspan="4">Пример показывает, что если мы контролируем весь код, который не делает ничего лишнего, как это происходит в примерах выше, то успех близок. Нагрузка даже с 200 частицами (в Хроме) составляет 45% (нужно смотреть 2 или 3 процесса — Chrome и два Chrome helper) и 60% при 2000. Для Firefox — примерно то же, разве что на 10% медленнее (при хороших условиях) и больше случайных тормозящих факторов.</td>
+    </tr>
+    </tbody></table>Но проблемен Canvas при малых нагрузках. Нагрузка при 2 частицах часто составляет 40-60% и столько же — для 25, и 0 — для незапущенного setInterval(). Любая его дорисовка нагружает процессор (при 30 FPS — процентов от 30), а объём дорисовки не имеет большого значения. Очевидно, что при худшей видеокарте результаты будут хуже, и где-то мы перестанем видеть улучшения, тормозить начнёт всегда при наличии Canvas, а поправить можно будет только уменьшением FPS.<br>
+<br>
+Более детально, результаты такие. Берём jsFiddle как менее влияющий на результаты, <a target="_blank" class="textDecorationColor" href="https://jsfiddle.net/spmbt/mbdardty/">копируем туда пример с добавлением</a><span style="color: rgb(34, 68, 136);">⇗</span> кнопки остановки. Запускаем разное количество снежинок, ждём примерно минуту, пока расходы процессора успокаиваются (не двигая мышь, ничего не делая). Смотрим результаты через Activity Monitor (MacBook с видео Intel HD Graphics 5000). Если смотреть на Windows, скажем, на 4-ядерном процессоре, то увидим загрузку не более 25%. Называемые здесь в статье <b>100% относятся к загрузке одного ядра</b>, т.е. 25% надо будет умножать на 4. Просто браузеры пока по-другому не умеют распараллеливаться, но и эта нагрузка для ноутбука достаточно чувствительна, приводит к расходу энергии, приблизительно как при просмотре видео.<br>
+<br>
+Незапущенная отрисовка -10% нагрузки (фон).<br>
+0 частиц — 30%;<br>
+2 частиы — 35%;<br>
+25 частиц — 40%;<br>
+200 частиц — 50%;<br>
+1000 — 55%;<br>
+2000 — 65%.<br>
+При этом не всегда показания повторяются, зависит от других запущенных программ и занятости памяти.<br>
+<br>
+Вот и разгадка того, почему с появлением Canvas все сразу не бросились программировать на нём. Процессоры, начальное возможное несовершенство реализации и неполная поддержка в браузерах не позволяли делать приемлемый битрейт, чтобы с хорошим качеством движения пройти «ценз производительности», зависящий не от числа частиц, а от битрейта, и уложиться при этом в идеале в 20%. С анимацией на слоях можно запустить хотя бы 5 частиц и пройти этот ценз. Сейчас с производительностью стало лучше, а IE8, который без Canvas, занимает долю <a target="_blank" class="textDecorationColor" href="http://alexvaleev.ru/browserstat/2015/12/">около 0.5 процента</a><span style="color: rgb(34, 68, 136);">⇗</span>.<br>
+<br>
+<h2>Свои алгоритмы на канвасе</h2><br>
+Создадим свои варианты экономичных алгоритмов на канвасе. Сначала замкнём плоскость в тор и пустим снежинки по ветру с небольшими случайными блужданиями, которые применяются к скорости каждой частицы. Получается довольно естественно, хотя без впечатления о порывах ветра. Второй эффект — параллакс, когда более мелкие частицы падают медленнее, что создаёт ощущение трёхмерности сцены.<br>
+<br>
+С такими установками пошёл первый блин.<br>
+<table>
+    <tbody><tr>
+        <th>Год: 2015</th>
+        <th colspan="2"><a target="_blank" class="textDecorationColor" href="http://spmbt.github.io/snowfalls/snow-canvasTorus.htm">Демо</a><span style="color: rgb(34, 68, 136);">⇗</span> и песочница: <a target="_blank" class="textDecorationColor" href="https://jsfiddle.net/spmbt/963b3cyg/1/">ветер с падением и случайными блужданиями скорости</a><span style="color: rgb(34, 68, 136);">⇗</span>, весь экран, завёрнутый в тор</th>
+        <th></th>
+    </tr>
+    <tr>
+        <td>Частиц на демо: <b>100</b></td>
+        <td rowspan="5" colspan="3"><div style="text-align:center;"><div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="/605x268" src="https://habrastorage.org/files/7dc/9e7/fd8/7dc9e7fd80d643af92f2730dbf161be0.png" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: ne-resize;" src="https://habrastorage.org/files/7dc/9e7/fd8/7dc9e7fd80d643af92f2730dbf161be0.png"></div></td>
+    </tr>
+    <tr>
+        <td>Тип: <b>Canvas</b></td>
+    </tr>
+    <tr>
+        <td>Песочница — <b>ДА</b></td>
+    </tr>
+    <tr>
+        <td>Загрузка: <b>35%</b></td>
+    </tr>
+    <tr>
+        <td>Строк кода: <b>50</b></td>
+    </tr>
+    <tr>
+        <td colspan="4">Случайность блужданий приводит к тому, что некоторые частицы, довольно большое их число, летят, постепенно меняя направление и летают всё более произвольно. Нужно «затухание» отклонений скорости, чтобы рой частиц приводился к общему потоку. Множитель *.999 в коде создаёт это «успокаивание. Но действует на скорость вообще, поэтому со временем они будут всё больше замедляться. Для бесконечного падения это не подходит, но нужно падение в пределах экрана.<br>
+            <br>
+            Следующий шаг — это создание земли. Снег будет на ней останавливаться и таять, чтобы, растаяв, частицы снова появлялись сверху (для простоты будет пока что одинаковое число частиц, без оптимизаций).</td>
+    </tr>
+    <tr>
+        <th></th>
+        <th colspan="2"><a target="_blank" class="textDecorationColor" href="http://spmbt.github.io/snowfalls/snow-canvasMelt.htm">Демо 2</a><span style="color: rgb(34, 68, 136);">⇗</span> и песочница: <a target="_blank" class="textDecorationColor" href="https://jsfiddle.net/spmbt/963b3cyg/">Сцена с таянием снега внизу окна</a><span style="color: rgb(34, 68, 136);">⇗</span>, весь экран</th>
+        <th></th>
+    </tr>
+    <tr>
+        <td>Частиц на демо: <b>1000</b></td>
+        <td rowspan="5" colspan="3"><div style="text-align:center;"><div style="overflow: hidden; width: 0px; height: 8px; display: none;" class="de-img-hid"><img title="/605x385" src="https://habrastorage.org/files/bd1/969/22c/bd196922cb6d4527b4df08291868cf1a.png" style="position: absolute; left: -9999px;" class="_noAddOwnView"></div><img style="cursor: ne-resize;" src="https://habrastorage.org/files/bd1/969/22c/bd196922cb6d4527b4df08291868cf1a.png"></div></td>
+    </tr>
+    <tr>
+        <td>Тип: <b>Canvas</b></td>
+    </tr>
+    <tr>
+        <td>Песочница — <b>ДА</b></td>
+    </tr>
+    <tr>
+        <td>Загрузка: <b>40-50%</b> (30 FPS)</td>
+    </tr>
+    <tr>
+        <td>Строк кода: <b>50</b></td>
+    </tr>
+    <tr>
+        <td colspan="4">Величина частиц влияет на то, где они будут останавливаться: чем больше частица, тем ближе к низу окна. Это тоже создаёт эффект трёхмерности и случайное заполнение „земли“ снежинками.<br>
+            <br>
+            Вначале нужно запустить заряд снега помощнее, чтобы быстро образовался покров. Через минуту он на глазах начнёт таять, а полностью растаявшие частицв снизу переходят наверх. Круговорот воды.<br>
+            <br>
+            Для изначально равновесного процесса, конечно, нужно равномерно поставлять снег с небес. Но и сезоны таяния и снежных зарядов имеют свой шарм и нескучность. Из этого демо немедленно получаем <a target="_blank" class="textDecorationColor" href="https://fiddle.jshell.net/spmbt/963b3cyg/9/show/light/">картинку с оленями</a><span style="color: rgb(34, 68, 136);">⇗</span>, ссылка на которую была вверху статьи (<a target="_blank" class="textDecorationColor" href="http://jsfiddle.net/spmbt/963b3cyg/9/embedded/result,js,html,css/">код в песочнице</a><span style="color: rgb(34, 68, 136);">⇗</span>, 30% загрузки, 120 частиц).</td>
+    </tr>
+    </tbody></table><br>
+<br>
+<h2>Скрипты Kafeman в рамках хакатона</h2><br>
+Параллельно скрипты со снегом и другими праздничными эффектами делал  <a href="http://habrahabr.ru/users/kafeman/" class="user_link">kafeman</a>.<br>
+Начальная идея — построить <a target="_blank" class="textDecorationColor" href="https://geekadm.ru/#/2015">приветственную страницу</a><span style="color: rgb(34, 68, 136);">⇗</span> с эффектами для посетителей клуба АДМ. <a target="_blank" class="textDecorationColor" href="http://46.101.141.171/snow.html?v=4">Всё могло быть серьёзней</a><span style="color: rgb(34, 68, 136);">⇗</span>, но история не терпит сослагательного наклонения. Кроме чисто декоративного оформления, посетила идея посмотреть на реальный снегопад (<a target="_blank" class="textDecorationColor" href="https://www.youtube.com/watch?v=HbgoKKj7TNA">1</a><span style="color: rgb(34, 68, 136);">⇗</span>, <a target="_blank" class="textDecorationColor" href="https://www.youtube.com/watch?v=Cx8n9jhN6aA">2</a><span style="color: rgb(34, 68, 136);">⇗</span>, <a target="_blank" class="textDecorationColor" href="https://www.youtube.com/watch?v=RuqVnqNPyC0">3</a><span style="color: rgb(34, 68, 136);">⇗</span>) и смоделировать те неприятные близко мелькающие частицы снега. <a target="_blank" class="textDecorationColor" href="https://jsfiddle.net/yueuo01x/">Совершенство ещё не достигнуто</a><span style="color: rgb(34, 68, 136);">⇗</span>, но направление имеет все основания, иначе не вспомнится лепящийся на лицо отвлекающий снег. Тут надо поэкспериментировать с отрисовкой бесформенных хлопьев и их смазанным мельканием.<br>
+<br>
+И надо как-то отращивать снежный покров: <a target="_blank" class="textDecorationColor" href="https://jsfiddle.net/162e4jte/3/">jsfiddle.net/162e4jte/3</a><span style="color: rgb(34, 68, 136);">⇗</span>, но не так, чтобы он поглотил всю планету с космонавтом на ней. Поначалу он тоже ложился бугорками и таял: <a target="_blank" class="textDecorationColor" href="https://jsfiddle.net/162e4jte/1/">jsfiddle.net/162e4jte/1</a><span style="color: rgb(34, 68, 136);">⇗</span>. Такое поведение встречалось в скриптах других авторов.<br>
+<br>
+Накоец, на будущее идея объединения генераторов движков в один тоже заслуживает исполнения. По результатам, кроме массы скриптов сторонних авторов, имеем 3-4 алгоритма движения частиц и 2 способа реализации, общие части которых достаточно хорошо по представленным песочницам и репо отслеживаются.<br>
+<br>
+Немного статистики. В связи с глобальным потеплением интерес к <a target="_blank" class="textDecorationColor" href="https://www.google.com/trends/explore#q=snow%20javascript">снегу в совокупности с Javascript</a><span style="color: rgb(34, 68, 136);">⇗</span>? как и <a target="_blank" class="textDecorationColor" href="https://www.google.com/trends/explore#q=ski">к лыжам</a><span style="color: rgb(34, 68, 136);">⇗</span> — падает, а интерес к <a target="_blank" class="textDecorationColor" href="https://www.google.com/trends/explore#q=canvas%20javascript">Canvas и Javascript</a><span style="color: rgb(34, 68, 136);">⇗</span> — растёт. Теперь мы знаем, в какой комбинации будет обеспечен стабильный интерес.<br>
+<br>
+<h2>Заключение</h2><br>
+2 реально выполнимых для эффекта снега способа программирования — DOM-слои и Canvas — имеют свои ниши применения. До примерно 50 частиц выигрывает DOM, но не во всех режимах, для задач, где нужна малая нагрузка на процессор. Высокий битрейт понижает планку. Более 50 (но уверенно — более 200) — но тоже с желательно низким битрейтом — выигрывает Canvas. Но раскошеливаться надо на загрузку побольше — от 30% ресурсов процессора. Граница и критерии — очень зыбка и зависит от аппаратуры, браузера, успехов реализаций движка в браузерах. Мобильный пользователь скажет категорическое „нет“ более 5 частицам, а стационарник с большой видеокартой искренне не будет понимать, в чём проблемы с 200 частицами в DOM и с 5000 в Canvas.<br>
+<br>
+Всё лишнее из алгоритма для типичного коммерческого применения (внимание пользователя в районе праздников) нужно убирать, тестировать алгоритмы на разных устройствах и принимать решения о нише покрытия пользователей. Могут быть более выигрышная низкобитрейтная иллюминация на Canvas или кратковременные фейерверки на нём же. Не помешает подсказать, какой кнопкой выключить анимацию и запомнить в настройках юзера, что „акция отработала“. Поскольку снег не такой денежный, как Яндекс-браузер, нет оснований „ломать“ эту кнопку сознательно. Ещё через пару лет можно надеяться, что положение с канвасом улучшится, и он медленно будет отбирать себе область малого количества частиц и повышенного битрейта.<br>
+<br>
+Выразительные возможности скриптов, в основном, на данном этапе исчерпаны. У достаточно завершённых скриптов есть ряд свойств, признанных необходимыми, а часть невыполнимых по производительности свойств (вращение снежинок в формате 3D) не выполняется, но никого это не смущает. Но из-за производительной отрисовки на канвасе можно ожидать, что такие скрипты появятся (с нагрузкой от 30%).<br>
+<br>
+Перспективы кодирования — можно написать конструкторы, которые давали бы объект для DOM или Canvas по настройкам. Конструкторы могли бы писать разные авторы. С таким подходом организован проект на χ·АДМе (Гитхаб): <a target="_blank" class="textDecorationColor" href="https://github.com/clubadm/snowmachine">github.com/clubadm/snowmachine</a><span style="color: rgb(34, 68, 136);">⇗</span>.
+<br>
+<br>
+<div class="polling">
+
+
+    <form action="/json/polling/" class="poll" method="post">
+
+        <div class="poll_title">Как вы относитесь к появлению на страницах сайтов анимаций в виде падающего снега?</div>
+
+        <input name="post_id" value="" type="hidden">
+        <input name="polling_question_id" value="1" type="hidden">
+
+        <table class="answer">
+            <tbody><tr>
+
+                <td class="input">
+                    <input id="vv1" class="checkbox js-field-data" name="variant[]" value="1" type="checkbox">
+                </td>
+
+                <td class="label">
+                    <label for="vv1">Всегда отрицательно, если нет альтернативы не смотреть такую страницу</label>
+                </td>
+            </tr>
+            <tr>
+
+                <td class="input">
+                    <input id="vv2" class="checkbox js-field-data" name="variant[]" value="2" type="checkbox">
+                </td>
+
+                <td class="label">
+                    <label for="vv2">Чаще отрицательно, но при ненавязчивости эффектов — нейтрально или положительно</label>
+                </td>
+            </tr>
+            <tr>
+
+                <td class="input">
+                    <input id="vv3" class="checkbox js-field-data" name="variant[]" value="3" type="checkbox">
+                </td>
+
+                <td class="label">
+                    <label for="vv3">Нейтрально, не замечаю таких эффектов анимации</label>
+                </td>
+            </tr>
+            <tr>
+
+                <td class="input">
+                    <input id="vv4" class="checkbox js-field-data" name="variant[]" value="4" type="checkbox">
+                </td>
+
+                <td class="label">
+                    <label for="vv4">Чаще положительно, но иногда есть желание выключить</label>
+                </td>
+            </tr>
+            <tr>
+
+                <td class="input">
+                    <input id="vv5" class="checkbox js-field-data" name="variant[]" value="5" type="checkbox">
+                </td>
+
+                <td class="label">
+                    <label for="vv5">Всегда положительно, практически нет случаев чрезмерной анимации</label>
+                </td>
+            </tr>
+            </tbody></table>
+    </form>
+
+</div>
+
+<div class="clear"></div>
